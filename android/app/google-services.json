@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "817740614273",
+    "project_id": "bilirancreativeapp",
+    "storage_bucket": "bilirancreativeapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:817740614273:android:b28c6d364bd10211191b80",
+        "android_client_info": {
+          "package_name": "com.example.biliran_creative_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCd3oNZVMKvg9SSKe-Lxf2IJ6XoTUCJgEU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
