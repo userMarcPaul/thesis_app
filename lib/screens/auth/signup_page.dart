@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'login_page.dart';
 import '../role_selection_page.dart';
+import '../client/client_home_page.dart';
 
 class SignupPage extends StatefulWidget {
-  final String role; // 'client', 'creative', 'admin'
-  const SignupPage({super.key, required this.role});
+  final String role;
+  final VoidCallback onSwitch;
+
+  const SignupPage({super.key, required this.role, required this.onSwitch});
 
   @override
   State<SignupPage> createState() => _SignupPageState();
@@ -15,9 +17,9 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
+  String name = '';
   String email = '';
   String password = '';
-  String name = '';
   bool _loading = false;
 
   Future<void> _submit() async {
@@ -27,31 +29,35 @@ class _SignupPageState extends State<SignupPage> {
     setState(() => _loading = true);
 
     try {
-      // ✅ Create user in FirebaseAuth
+      // Firebase signup
       UserCredential userCred = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
 
       final uid = userCred.user!.uid;
 
-      // ✅ Save user info in Firestore with enforced role
+      // Save Firestore profile
       await FirebaseFirestore.instance.collection("users").doc(uid).set({
         "name": name,
         "email": email,
-        "role": widget.role, // force correct role
-        "createdAt": DateTime.now(),
+        "role": widget.role,
+        "createdAt": FieldValue.serverTimestamp(),
       });
 
-      // ✅ Redirect based on role
-      if (!mounted) return;
+      // Redirect
       if (widget.role == "client") {
-        Navigator.pushReplacementNamed(context, "/client_home");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ClientHomePage(clientName: name),
+          ),
+        );
       } else if (widget.role == "creative") {
         Navigator.pushReplacementNamed(context, "/creative_home");
       } else if (widget.role == "admin") {
         Navigator.pushReplacementNamed(context, "/admin_dashboard");
       }
     } on FirebaseAuthException catch (e) {
-      _showErrorDialog("Sign Up Failed", e.message ?? "An error occurred.");
+      _showErrorDialog("Signup Failed", e.message ?? "Error creating account.");
     } catch (e) {
       _showErrorDialog("Error", e.toString());
     }
@@ -98,7 +104,7 @@ class _SignupPageState extends State<SignupPage> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+            colors: [Color(0xFF6dd5ed), Color(0xFF2193b0)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -139,18 +145,19 @@ class _SignupPageState extends State<SignupPage> {
                               Text(
                                 "Sign Up as ${widget.role.toUpperCase()}",
                                 style: const TextStyle(
-                                  fontSize: 24,
+                                  fontSize: 26,
                                   fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
                                 ),
                               ),
                               const SizedBox(height: 20),
 
                               TextFormField(
                                 decoration:
-                                    _inputDecoration("Name", Icons.person),
+                                    _inputDecoration("Full Name", Icons.person),
                                 onSaved: (v) => name = v!.trim(),
                                 validator: (v) =>
-                                    v!.isEmpty ? 'Enter your name' : null,
+                                    v!.isNotEmpty ? null : 'Enter your name',
                               ),
                               const SizedBox(height: 15),
 
@@ -192,18 +199,10 @@ class _SignupPageState extends State<SignupPage> {
                                         style: TextStyle(fontSize: 18),
                                       ),
                                     ),
-                              const SizedBox(height: 15),
+                              const SizedBox(height: 20),
 
                               GestureDetector(
-                                onTap: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          LoginPage(role: widget.role),
-                                    ),
-                                  );
-                                },
+                                onTap: widget.onSwitch,
                                 child: const Text(
                                   "Already have an account? Login",
                                   style: TextStyle(

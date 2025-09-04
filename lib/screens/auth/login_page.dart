@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'signup_page.dart';
 import '../role_selection_page.dart';
+import '../client/client_home_page.dart';
 
 class LoginPage extends StatefulWidget {
   final String role;
-  const LoginPage({super.key, required this.role});
+  final VoidCallback onSwitch;
+
+  const LoginPage({super.key, required this.role, required this.onSwitch});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -26,13 +28,13 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
 
     try {
-      // Sign in with Firebase
+      // Firebase login
       UserCredential userCred = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
 
       final uid = userCred.user!.uid;
 
-      // Fetch user data
+      // Fetch Firestore profile
       DocumentSnapshot doc =
           await FirebaseFirestore.instance.collection("users").doc(uid).get();
 
@@ -45,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
       final userData = doc.data() as Map<String, dynamic>;
       final storedRole = userData["role"];
 
-      // ✅ Check role match
+      // Role mismatch
       if (storedRole != widget.role) {
         _showErrorDialog(
           "Access Denied",
@@ -55,9 +57,14 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // ✅ Redirect based on role
+      // Redirect
       if (storedRole == "client") {
-        Navigator.pushReplacementNamed(context, "/client_home");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ClientHomePage(clientName: userData['name']),
+          ),
+        );
       } else if (storedRole == "creative") {
         Navigator.pushReplacementNamed(context, "/creative_home");
       } else if (storedRole == "admin") {
@@ -99,17 +106,6 @@ class _LoginPageState extends State<LoginPage> {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(30),
         borderSide: const BorderSide(color: Colors.blue, width: 1.5),
-      ),
-    );
-  }
-
-  Widget _socialIconButton(Widget child, VoidCallback onPressed) {
-    return InkWell(
-      onTap: onPressed,
-      child: CircleAvatar(
-        radius: 25,
-        backgroundColor: Colors.white,
-        child: child,
       ),
     );
   }
@@ -211,15 +207,7 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(height: 20),
 
                               GestureDetector(
-                                onTap: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          SignupPage(role: widget.role),
-                                    ),
-                                  );
-                                },
+                                onTap: widget.onSwitch,
                                 child: const Text(
                                   "Don't have an account? Create one",
                                   style: TextStyle(
@@ -228,35 +216,6 @@ class _LoginPageState extends State<LoginPage> {
                                     fontSize: 16,
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              // Social logos
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  _socialIconButton(
-                                    const Icon(Icons.facebook,
-                                        size: 30, color: Colors.blue),
-                                    () {
-                                      // TODO: Facebook login
-                                    },
-                                  ),
-                                  const SizedBox(width: 20),
-                                  _socialIconButton(
-                                    const Text(
-                                      "G",
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.red,
-                                      ),
-                                    ),
-                                    () {
-                                      // TODO: Google login
-                                    },
-                                  ),
-                                ],
                               ),
                             ],
                           ),

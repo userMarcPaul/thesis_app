@@ -12,7 +12,7 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
-  bool showLogin = true; // default: login form
+  bool showLogin = true; // default is login
 
   void toggle() {
     setState(() {
@@ -24,8 +24,14 @@ class _AuthPageState extends State<AuthPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: showLogin
-          ? LoginPage(role: widget.role) // removed onSwitch
-          : SignupPage(role: widget.role), // removed onSwitch
+          ? LoginPage(
+              role: widget.role,
+              onSwitch: toggle, // 👈 switch to signup
+            )
+          : SignupPage(
+              role: widget.role,
+              onSwitch: toggle, // 👈 switch to login
+            ),
     );
   }
 }
