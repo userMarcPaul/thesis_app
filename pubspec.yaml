@@ -30,7 +30,8 @@ dependencies:
   intl: any
   flutter_local_notifications: any
   google_sign_in: any
-  smooth_page_indicator: ^1.2.0+2   # ✅ Needed for WormEffect
+  smooth_page_indicator: ^1.2.0+2  
+  curved_navigation_bar: ^1.0.3 # ✅ Needed for WormEffect
 
 dev_dependencies:
   flutter_test:
