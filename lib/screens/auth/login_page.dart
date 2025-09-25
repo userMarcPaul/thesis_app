@@ -17,9 +17,11 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  String email = '';
-  String password = '';
+  String _email = '';
+  String _password = '';
   bool _loading = false;
+  // State variable to track password visibility
+  bool _isPasswordVisible = false;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -30,7 +32,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       // Firebase login
       UserCredential userCred = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
+          .signInWithEmailAndPassword(email: _email, password: _password);
 
       final uid = userCred.user!.uid;
 
@@ -57,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // Redirect
+      // Redirect based on the user's role
       if (storedRole == "client") {
         Navigator.pushReplacement(
           context,
@@ -96,61 +98,36 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint, IconData icon) {
-    return InputDecoration(
-      prefixIcon: Icon(icon, color: Colors.blue),
-      hintText: hint,
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(30),
-        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Back button
-              Align(
-                alignment: Alignment.topLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const RoleSelectionPage(),
-                    ),
-                  ),
-                ),
-              ),
-
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Card(
-                      elevation: 8,
+      // The background color is now a solid white, like the signup page
+      backgroundColor: Colors.white,
+      
+      body: Center(
+        // ScrollConfiguration and SingleChildScrollView prevent the scrollbar from showing
+        // and allow the content to be scrollable if needed on small screens
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              // ConstrainedBox ensures the content card has a consistent max width
+              // on large screens (e.g., desktops)
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 32),
+                    // The Card now matches the styling of the signup page
+                    Card(
+                      elevation: 4,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(25),
+                        padding: const EdgeInsets.all(20.0),
                         child: Form(
                           key: _formKey,
                           child: Column(
@@ -163,23 +140,51 @@ class _LoginPageState extends State<LoginPage> {
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 20),
 
+                              // TextFormField styling is updated to match the signup page
                               TextFormField(
-                                decoration:
-                                    _inputDecoration("Email", Icons.email),
-                                onSaved: (v) => email = v!.trim(),
+                                decoration: InputDecoration(
+                                  labelText: "Email",
+                                  prefixIcon: const Icon(Icons.email),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                keyboardType: TextInputType.emailAddress,
+                                onSaved: (v) => _email = v!.trim(),
                                 validator: (v) =>
                                     v!.contains('@') ? null : 'Invalid email',
                               ),
                               const SizedBox(height: 15),
 
                               TextFormField(
-                                obscureText: true,
-                                decoration:
-                                    _inputDecoration("Password", Icons.lock),
-                                onSaved: (v) => password = v!.trim(),
+                                // Toggles password visibility based on the state variable
+                                obscureText: !_isPasswordVisible,
+                                decoration: InputDecoration(
+                                  labelText: "Password",
+                                  prefixIcon: const Icon(Icons.lock),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  // Add the IconButton here to toggle visibility
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _isPasswordVisible
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isPasswordVisible = !_isPasswordVisible;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                onSaved: (v) => _password = v!.trim(),
                                 validator: (v) =>
                                     v!.length >= 6 ? null : 'Min 6 chars',
                               ),
@@ -189,13 +194,12 @@ class _LoginPageState extends State<LoginPage> {
                                   ? const CircularProgressIndicator()
                                   : ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
+                                        // ElevatedButton styling is updated to match the signup page
+                                        backgroundColor: Colors.deepPurple,
                                         foregroundColor: Colors.white,
-                                        minimumSize:
-                                            const Size(double.infinity, 50),
+                                        minimumSize: const Size(double.infinity, 50),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30),
+                                          borderRadius: BorderRadius.circular(10),
                                         ),
                                       ),
                                       onPressed: _submit,
@@ -209,12 +213,14 @@ class _LoginPageState extends State<LoginPage> {
                               GestureDetector(
                                 onTap: widget.onSwitch,
                                 child: const Text(
+                                  // This text style now matches the signup page
                                   "Don't have an account? Create one",
                                   style: TextStyle(
-                                    color: Colors.blue,
+                                    color: Colors.deepPurple,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             ],
@@ -222,10 +228,10 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

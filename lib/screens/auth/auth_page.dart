@@ -30,7 +30,7 @@ class _AuthPageState extends State<AuthPage> {
             )
           : SignupPage(
               role: widget.role,
-              onSwitch: toggle, // 👈 switch to login
+                onSwitch: toggle, // 👈 switch to login
             ),
     );
   }

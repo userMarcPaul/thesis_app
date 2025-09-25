@@ -1,215 +1,216 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
-import '../role_selection_page.dart';
-import '../client/client_home_page.dart';
+import '../client/client_preferences_form_page.dart';
 
 class SignupPage extends StatefulWidget {
   final String role;
   final VoidCallback onSwitch;
 
-  const SignupPage({super.key, required this.role, required this.onSwitch});
+  const SignupPage({
+    super.key,
+    required this.role,
+    required this.onSwitch,
+  });
 
   @override
   State<SignupPage> createState() => _SignupPageState();
 }
 
 class _SignupPageState extends State<SignupPage> {
+  final _auth = FirebaseAuth.instance;
   final _formKey = GlobalKey<FormState>();
-  String name = '';
-  String email = '';
-  String password = '';
-  bool _loading = false;
+  String _email = '';
+  String _password = '';
+  // New state variable to track password visibility
+  bool _isPasswordVisible = false; 
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    _formKey.currentState!.save();
+  // ✅ Email & Password Signup
+  Future<void> _signupWithEmail() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        UserCredential userCredential = await _auth.createUserWithEmailAndPassword(email: _email, password: _password);
+        String uid = userCredential.user!.uid;
 
-    setState(() => _loading = true);
-
-    try {
-      // Firebase signup
-      UserCredential userCred = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-
-      final uid = userCred.user!.uid;
-
-      // Save Firestore profile
-      await FirebaseFirestore.instance.collection("users").doc(uid).set({
-        "name": name,
-        "email": email,
-        "role": widget.role,
-        "createdAt": FieldValue.serverTimestamp(),
-      });
-
-      // Redirect
-      if (widget.role == "client") {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => ClientHomePage(clientName: name),
+            builder: (_) => ClientPreferencesFormPage(userId: uid),
           ),
         );
-      } else if (widget.role == "creative") {
-        Navigator.pushReplacementNamed(context, "/creative_home");
-      } else if (widget.role == "admin") {
-        Navigator.pushReplacementNamed(context, "/admin_dashboard");
-      }
-    } on FirebaseAuthException catch (e) {
-      _showErrorDialog("Signup Failed", e.message ?? "Error creating account.");
-    } catch (e) {
-      _showErrorDialog("Error", e.toString());
-    }
-
-    setState(() => _loading = false);
-  }
-
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
+      } on FirebaseAuthException catch (e) {
+        print("Signup failed: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message ?? "An error occurred"),
           ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
-  InputDecoration _inputDecoration(String hint, IconData icon) {
-    return InputDecoration(
-      prefixIcon: Icon(icon, color: Colors.blue),
-      hintText: hint,
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(30),
-        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
-      ),
-    );
+  // ✅ Facebook Signup
+  Future<void> _signupWithFacebook() async {
+    try {
+      final LoginResult result = await FacebookAuth.instance.login();
+      if (result.status == LoginStatus.success) {
+        final OAuthCredential facebookAuthCredential = FacebookAuthProvider.credential(result.accessToken!.tokenString);
+        UserCredential userCredential = await _auth.signInWithCredential(facebookAuthCredential);
+        String uid = userCredential.user!.uid;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ClientPreferencesFormPage(userId: uid),
+          ),
+        );
+      }
+    } catch (e) {
+      print("Facebook signup failed: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Facebook signup failed: $e")),
+      );
+    }
+  }
+
+  // ✅ Apple Signup
+  Future<void> _signupWithApple() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final oauthCredential = OAuthProvider("apple.com").credential(
+        idToken: credential.identityToken,
+        accessToken: credential.authorizationCode,
+      );
+
+      UserCredential userCredential = await _auth.signInWithCredential(oauthCredential);
+      String uid = userCredential.user!.uid;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ClientPreferencesFormPage(userId: uid),
+        ),
+      );
+    } catch (e) {
+      print("Apple signup failed: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Apple signup failed: $e")),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF6dd5ed), Color(0xFF2193b0)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      appBar: AppBar(
+        title: const Text(
+          "Create an Account",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Back button
-              Align(
-                alignment: Alignment.topLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const RoleSelectionPage(),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Center(
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      "Join us and start your journey!",
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                ),
-              ),
+                    const SizedBox(height: 32),
 
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Card(
-                      elevation: 8,
+                    Card(
+                      elevation: 4,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(25),
+                        padding: const EdgeInsets.all(20.0),
                         child: Form(
                           key: _formKey,
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                "Sign Up as ${widget.role.toUpperCase()}",
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
                               TextFormField(
-                                decoration:
-                                    _inputDecoration("Full Name", Icons.person),
-                                onSaved: (v) => name = v!.trim(),
-                                validator: (v) =>
-                                    v!.isNotEmpty ? null : 'Enter your name',
-                              ),
-                              const SizedBox(height: 15),
-
-                              TextFormField(
-                                decoration:
-                                    _inputDecoration("Email", Icons.email),
-                                onSaved: (v) => email = v!.trim(),
-                                validator: (v) =>
-                                    v!.contains('@') ? null : 'Invalid email',
-                              ),
-                              const SizedBox(height: 15),
-
-                              TextFormField(
-                                obscureText: true,
-                                decoration:
-                                    _inputDecoration("Password", Icons.lock),
-                                onSaved: (v) => password = v!.trim(),
-                                validator: (v) =>
-                                    v!.length >= 6 ? null : 'Min 6 chars',
-                              ),
-                              const SizedBox(height: 25),
-
-                              _loading
-                                  ? const CircularProgressIndicator()
-                                  : ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        foregroundColor: Colors.white,
-                                        minimumSize:
-                                            const Size(double.infinity, 50),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                        ),
-                                      ),
-                                      onPressed: _submit,
-                                      child: const Text(
-                                        "Sign Up",
-                                        style: TextStyle(fontSize: 18),
-                                      ),
-                                    ),
-                              const SizedBox(height: 20),
-
-                              GestureDetector(
-                                onTap: widget.onSwitch,
-                                child: const Text(
-                                  "Already have an account? Login",
-                                  style: TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                decoration: InputDecoration(
+                                  labelText: "Email",
+                                  prefixIcon: const Icon(Icons.email),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
+                                ),
+                                keyboardType: TextInputType.emailAddress,
+                                onChanged: (val) => _email = val,
+                                validator: (val) => val!.isEmpty || !val.contains('@')
+                                    ? "Please enter a valid email"
+                                    : null,
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                decoration: InputDecoration(
+                                  labelText: "Password",
+                                  prefixIcon: const Icon(Icons.lock),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  // Add the IconButton here
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      // Toggle the state and rebuild the widget
+                                      setState(() {
+                                        _isPasswordVisible = !_isPasswordVisible;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                // Use the new state variable to control visibility
+                                obscureText: !_isPasswordVisible,
+                                onChanged: (val) => _password = val,
+                                validator: (val) => val!.length < 6
+                                    ? "Password must be at least 6 characters"
+                                    : null,
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: _signupWithEmail,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.deepPurple,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  minimumSize: const Size(double.infinity, 50),
+                                ),
+                                child: const Text(
+                                  "Sign Up with Email",
+                                  style: TextStyle(fontSize: 16),
                                 ),
                               ),
                             ],
@@ -217,10 +218,66 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                       ),
                     ),
-                  ),
+
+                    const SizedBox(height: 32),
+                    const Row(
+                      children: [
+                        Expanded(child: Divider()),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Text(
+                            "OR",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                        Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.facebook, color: Colors.white),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1877F2),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      onPressed: _signupWithFacebook,
+                      label: const Text(
+                        "Sign Up with Facebook",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SignInWithAppleButton(
+                      onPressed: _signupWithApple,
+                      style: SignInWithAppleButtonStyle.black,
+                      height: 50,
+                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    ),
+                    const SizedBox(height: 48),
+
+                    GestureDetector(
+                      onTap: widget.onSwitch,
+                      child: const Text(
+                        "Already have an account? Log In",
+                        style: TextStyle(
+                          color: Colors.deepPurple,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
