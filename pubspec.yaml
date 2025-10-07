@@ -10,20 +10,26 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+    
+
 
   # Default
   cupertino_icons: ^1.0.8
 
+  # for country code picker
+  intl_phone_field: ^3.2.0
+
   # Firebase
-  firebase_core: ^4.0.0
-  firebase_auth: any
-  cloud_firestore: any
+  firebase_core: ^4.1.1
+  cloud_firestore: ^6.0.2 # for Firestore
   firebase_storage: any
   firebase_messaging: any
+  firebase_auth: ^6.1.0    # for Authentication
+  firebase_database: ^12.0.2  # if using Realtime Database
 
   # Social Auth  
   flutter_facebook_auth: ^7.1.0
-  sign_in_with_apple: ^6.1.0
+  sign_in_with_apple: ^7.0.1
   
   # State Management
   provider: any
@@ -33,18 +39,18 @@ dependencies:
   table_calendar: any
   intl: any
   flutter_local_notifications: any
-  google_sign_in: any
+  google_sign_in: 6.2.1
   smooth_page_indicator: ^1.2.0+2  
   curved_navigation_bar: ^1.0.3 # ✅ Needed for WormEffect
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
 
   # ✅ Make sure this folder exists in your project root
   assets:
-    - assets/
+    - packages/intl_phone_field/assets/flags/

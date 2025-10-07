@@ -81,6 +81,31 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = false);
   }
 
+  // New function to handle password reset
+  Future<void> _resetPassword(BuildContext context) async {
+    if (_email.isEmpty) {
+      _showErrorDialog("Missing Email",
+          "Please enter your email address in the field above to receive the password reset link.");
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: _email);
+      // Show success message using the same dialog style
+      _showErrorDialog(
+        "Password Reset Sent",
+        "A password reset link has been successfully sent to $_email. Please check your inbox.",
+      );
+    } on FirebaseAuthException catch (e) {
+      // Handle Firebase-specific errors (e.g., user not found)
+      _showErrorDialog(
+          "Reset Failed", e.message ?? "Could not send reset email.");
+    } catch (e) {
+      // Handle general errors
+      _showErrorDialog("An Error Occurred", e.toString());
+    }
+  }
+
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
@@ -103,7 +128,28 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       // The background color is now a solid white, like the signup page
       backgroundColor: Colors.white,
-      
+      appBar: AppBar(
+        // The AppBar is now transparent and has a centered title
+        title: const Text(
+          "Log In",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        // The back button is now a leading icon in the AppBar
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const RoleSelectionPage(),
+            ),
+          ),
+        ),
+      ),
       body: Center(
         // ScrollConfiguration and SingleChildScrollView prevent the scrollbar from showing
         // and allow the content to be scrollable if needed on small screens
@@ -111,7 +157,8 @@ class _LoginPageState extends State<LoginPage> {
           behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
               // ConstrainedBox ensures the content card has a consistent max width
               // on large screens (e.g., desktops)
               child: ConstrainedBox(
@@ -155,10 +202,13 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 keyboardType: TextInputType.emailAddress,
                                 onSaved: (v) => _email = v!.trim(),
+                                onChanged: (v) => _email = v!.trim(), // Keep _email updated for reset
                                 validator: (v) =>
                                     v!.contains('@') ? null : 'Invalid email',
                               ),
                               const SizedBox(height: 15),
+
+                             
 
                               TextFormField(
                                 // Toggles password visibility based on the state variable
@@ -179,7 +229,8 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     onPressed: () {
                                       setState(() {
-                                        _isPasswordVisible = !_isPasswordVisible;
+                                        _isPasswordVisible =
+                                            !_isPasswordVisible;
                                       });
                                     },
                                   ),
@@ -189,6 +240,23 @@ class _LoginPageState extends State<LoginPage> {
                                     v!.length >= 6 ? null : 'Min 6 chars',
                               ),
                               const SizedBox(height: 25),
+                             // "Forgot Password?" link styled to match the signup page
+                               // Forgot Password link
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: GestureDetector(
+                                  onTap: () => _resetPassword(context),
+                                  child: const Text(
+                                    "Forgot Password?",
+                                    style: TextStyle(
+                                      color: Colors.deepPurple,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 15),
 
                               _loading
                                   ? const CircularProgressIndicator()
@@ -197,9 +265,11 @@ class _LoginPageState extends State<LoginPage> {
                                         // ElevatedButton styling is updated to match the signup page
                                         backgroundColor: Colors.deepPurple,
                                         foregroundColor: Colors.white,
-                                        minimumSize: const Size(double.infinity, 50),
+                                        minimumSize:
+                                            const Size(double.infinity, 50),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
                                         ),
                                       ),
                                       onPressed: _submit,
